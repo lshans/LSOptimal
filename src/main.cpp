@@ -1,12 +1,3 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
-#include <iostream>
-#include <cassert>
-#include <cstdint>
-#include "pre.h"
-#include "common.h"
-#include "canny.h"
 /********************************************************************************************
  * date: 2016.3 by lss
  * description: prediction, transformation and encoding for single frame picture.
@@ -20,57 +11,24 @@
  * description: change mode 8 to four parameters from three parameters,process successfully,but airport.raw resi is large 349910805.
  *********************************************************************************************/
 
+#include <cstdlib>
+#include <cstdio>
+#include <cmath>
+#include <cassert>
+#include <cstdint>
+#include <iostream>
 
+#include "pre.h"
+#include "common.h"
+#include "canny.h"
 
 const int mode = 1;			// mode for predcition 0~8 in 4 x 4
 const int paranum = 4;			// num for para 1~4 in 4 x 4
 const double PI = 3.1415;
-//short dc_left_image[256][256][8][8];
-//short dc_top_image[256][256][8][8];
-//short dc_image[256][256][8][8];
-//short h_image[256][256][8][8];
-//short v_image[256][256][8][8];
-//short ddl_image[256][256][8][8];
-//short ddr_image[256][256][8][8];
-//short vr_image[256][256][8][8];
-//short hd_image[256][256][8][8];
-//short vl_image[256][256][8][8];
-//short hu_image[256][256][8][8];
-//void imagecut(int argc, char *argv[]);
-
-// print a matrix to a file for debugging
-int print_matrix_to_file(double **mat, int rows, int cols, const char *filename)
-{
-	FILE *fout = fopen(filename, "w");
-	assert(fout);
-	for (int i = 0; i < rows; ++i)
-	{
-		for (int j = 0; j < cols; ++j)
-			fprintf(fout, "%6.2f, ", mat[i][j]);
-		fprintf(fout, "\n");
-	}
-	fclose(fout);
-	return 0;
-}
-int print_matrix_to_file(short **mat, int rows, int cols, const char *filename)
-{
-	FILE *fout = fopen(filename, "w");
-	assert(fout);
-	for (int i = 0; i < rows; ++i)
-	{
-		for (int j = 0; j < cols; ++j)
-			fprintf(fout, "%4d", mat[i][j]);
-		fprintf(fout, "\n");
-	}
-	fclose(fout);
-	return 0;
-}
 
 // format transformation for input img file to little endian
 // img:		output
 // img_in:	origin img
-void transformat(short **img, unsigned char *img_in, int height, int width, int endian, int precision);
-
 void transformat(short **img, unsigned char *img_in,  int height, int width, int endian, int precision)
 {
 	if(precision <= 8)
@@ -79,7 +37,6 @@ void transformat(short **img, unsigned char *img_in,  int height, int width, int
 			for(int j = 0; j < width; j++)
 				img[i][j] = img_in[i* width + j];
 	}
-
 	else if((precision >= 8) && (precision <= 16))
 	{
 		for(int i = 0; i < height; i++)
@@ -92,89 +49,23 @@ void transformat(short **img, unsigned char *img_in,  int height, int width, int
 			}
 	}
 }
-
-//转置函数
-// TDCT: 转置后的矩阵
-// DCT：原始矩阵
-// H1：原始矩阵的高
-// W1：原始矩阵的宽
-
-// transpose DCT to IDCT
-// DCT:		input
-// IDCT:	output
-
-//void Fast(double ** TDCT, double ** DCT, int rows, int cols)
-//{
-//	for(int i=0; i < rows; i++)
-//		for(int j = 0; j < cols; j++)
-//			TDCT[j][i] = DCT[i][j];
-//}
-
 int main(int argc, char *argv[])
 {
+	// TODO 暂时不用按照C文件方式定义与声明，公共变量放在前面，其他用到的变量再定义并初始化
 	freopen("engery.txt", "w", stdout);
-	FILE *filein = NULL;				// 输入原图
-	FILE *fileout = NULL;				// 输出编码后的图像
+	
 	int  height;						// 原图高
 	int  width;							// 原图宽
 	int  endian;						// 大小端
 	int  precision;						// 原图比特精度，一般8bit
-	unsigned char *img_in = NULL;		// 原始图像的输入
-
-	//short img264Constructed[1024 + 1][1024 + 5] = {0}; //重建图像数组，利用264方法得到原图相应块位置的重建值，存储利用重建值更新原图后的整幅图数据
-	//short resi264[1024][1024] = {0};                   //存储264预测后整幅图的残差数据
-	//short pre264[1024][1024] = {0};                    //存储264预测后的预测数据
-	//int16_t H264resi_energy = 0;                       //原始大图的预测残差能量
-
-	short **imgLSConstructed = NULL; //利用LS方法得到原图相应块位置的重建值，存储利用重建值更新原图后的整幅图数据
-	short **LS_resi = NULL;         //存储LS方法预测后得到的整幅图的残差数据
-	short **preLS = NULL;           //原始大图的预测值
-	int16_t LS_resi_energy = 0;       //原始大图的预测残差能量
-    short pixAverage = 0;              //像素的平均值
-    long long pixSum = 0;              //像素的总和
 	
-	int   img_size = 0;					// 图像尺寸
-	int   resi_size = 0;				// 残差矩阵尺寸
-	//double Ck;							// 
+	int16_t LS_resi_energy = 0;			  //原始大图的预测残差能量
+	short pixAverage = 0;				   //像素的平均值
+	long long pixSum = 0;				   //像素的总和
 
-	/*double   **DCT = NULL;				// DCT系数矩阵
-	double   **ODST = NULL;				// ODST系数矩阵
-	double   **TDCT = NULL;				// DCT系数矩阵的转置
-	double   **f  = NULL;				// 变换后的矩阵？？？？
-	double   **F  = NULL;				// 变换后的矩阵？？？？
-	double   **temp = NULL;				// 变换中间矩阵*/
+	int   img_size = 0;						// 图像尺寸
+	int   resi_size = 0;					// 残差矩阵尺寸
 
-
-	
-	//	double Q[16][16];//   double q[16][16];
-	//double q[1][16] =  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	//{-x1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-	//{0,-x1,1,0,0,0,0,0,0,0,0,0,0,0,0,0},
-	//{0,0,-x1,1,0,0,0,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,-x1,1,0,0,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0},
-	//{0,0,0,0,-x1,1,0,0,0,0,0,0,0,0,0,0},
-	//q[0][0] = 1;
-	//for(i = 0,j = 0; j <= 15; j++)
-	//{
-	//q[i][j] = 0;
-	//}
-	//
-	//
-	//for(i = 2; i < 16; i++)
-	//{
-	//for(j = 2; j < 16; j++)
-	//{
-	//q[i][i] = 1;
-	//q[i][j-1] = -0.42;
-	//}
-	//}
-	
 		
 	//double paramter_4x4_ML[4][9] = {
 	//{0.42, 0.88, 0.57, 0.31, 0.25, 0.08, 0.71, 0.24, 0.33},
@@ -189,76 +80,38 @@ int main(int argc, char *argv[])
 	//{0, 0, 0, 0.76, 0, 0, 0, 0.29, 0.53}
 	//};
 
-
-	
-
-// 1. 读入参数
+    /************************** 1. 读入命令行参数**************************/
 	if(argc != 7)
 	{
-		printf("please input :infile outfile height width endian precision\n");
+		help();
 		return 0;
 	}
 	height = (int)atoi(argv[3]);
 	width  = (int)atoi(argv[4]);
 	endian = (int)atoi(argv[5]);
 	precision = (int)atoi(argv[6]);
-	//smallheight = (int)atoi(argv[7]);
-	//smallwidth = (int)atoi(argv[8]);
 	img_size = height * width;
 	resi_size = height * width;
-	img_in = (unsigned char *)calloc(img_size, sizeof(short));//如果分配成功则返回指向被分配内存的指针，否则返回空指针NULL
+
+    /********************** 2.  读入输入图像数据 argv[1]**************************/
+	unsigned char *img_in = new unsigned char [img_size];		// 原始图像的输入
+	//img_in = (unsigned char *)calloc(img_size, sizeof(short));//如果分配成功则返回指向被分配内存的指针，否则返回空指针NULL
 	assert(img_in);
-	//malloc 向系统申请分配指定size个字节的内存空间。返回类型是 void* 类型。void* 表示未确定类型的指针。
-	//C,C++规定，void* 类型可以强制转换为任何其它类型的指针。返回后强行转换为实际类型的指针。
+	//输入原始图像文件，将命令行的第一个参数，输入文件argv[1], 读入到一维指针 img_in指向的内存区域中
+	ReadFile(argv[1], img_in, img_size, precision);
 
-
-	// 给动态数组分配空间并读入文件
-	short **img = NULL;
-	img = (short **)calloc(height, sizeof(char *));
-	for(int i = 0; i < height; i++)
-		img[i] = (short *)calloc(width,sizeof(short));
-	//short *img = NULL;					// 原始图像大小端转换后的数据
-	//img = (short *)calloc(img_size, sizeof(short));//如果分配成功则返回指向被分配内存的指针，否则返回空指针NULL
-	
-	imgLSConstructed = (short **)calloc(height + bias_top_row + bias_down_row, sizeof(short *));
-	for(int i = 0; i < height + bias_top_row + bias_down_row; i++)
-		imgLSConstructed[i] = (short *)calloc(width + bias_left_col + bias_right_col,sizeof(short));
-
-	LS_resi = (short **)calloc(height, sizeof(short *));
-	for(int i = 0; i < height; i++)
-		LS_resi[i] = (short *)calloc(width,sizeof(short));
-
-	preLS = (short **)calloc(height, sizeof(short *));
-	for(int i = 0; i < height; i++)
-		preLS[i] = (short *)calloc(width,sizeof(short));
-
-	// 输入原始图像文件
-	if((filein = fopen(argv[1],"rb")) == NULL)
-	{
-		printf("the file can not open\n");
-		exit(0);
-	}
-	fread(img_in,sizeof(unsigned char), precision == 8 ? img_size : 2 * img_size, filein);
-	fclose(filein);
-	filein = NULL;
-	printf("打开文件成功\n");
-	
-
-	
-	//image cut 
-	//char cutpara[9][100] = {"", "03.raw", "1024", "1024", "8", "256", "256", "4", "4"};
-	
-	//imagecut(9, (char **)cutpara);
-
-	// 大小端格式转换
+    /********************** 3.  图像数据大小端格式转换 **************************/	
+	// 动态开辟空间， 存储原始图像进行大小端转换后的图像数据
+	short **img = new short*[height];//如果分配成功则返回指向被分配内存的指针，否则返回空指针NULL
+	memory_new(img, height, width);
+	// 大小端格式转换，将一维指针 img_in指向的内存区域中的数据进行大小端格式转换，并存储到二维指针img指向的内存区域中
 	transformat(img, img_in, height, width, endian, precision);
 	printf("转换文件成功\n");
-	//long hist[10] = {0};    //存储各方向的像素梯度赋值
-	//Canny(img, 1, height, width, hist);
-	//printf("各方向梯度强度\n");
-	//for(int i = 0; i < 10; ++i)
-	//	printf("mode %d %ld\n", i, hist[i]);
-	//将输入图像值赋值给imgLSConstructed  重建图像数组
+
+    /********************** 4. 对图像数据进行边界扩展**************************/
+	short **imgLSConstructed = new short*[height + bias_top_row + bias_down_row];	 //利用LS方法得到原图相应块位置的重建值，存储利用重建值更新原图后的整幅图数据
+	memory_new(imgLSConstructed, height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);// 使用函数memory_calloc, 动态开辟内存空间存储数据
+	//将输入图像值赋值给imgLSConstructed  重建图像数组，并进行bias_top_row, bias_down_row, bias_left_col, bias_right_col大小的上下左右边界扩展
 	for(int r = 0; r < height + bias_top_row + bias_down_row; r++)    
 	{
 		for(int c = 0; c < width + bias_left_col + bias_right_col; c++)
@@ -269,68 +122,23 @@ int main(int argc, char *argv[])
 				imgLSConstructed[r][c] = img[r - bias_top_row][c - bias_left_col];
 		}
 	}
-
 	// 打印初始重建图矩阵进行调试
-	FILE *fout = fopen("initConstruct.txt", "w");
-	assert(fout);
-	for (int i = 0; i < height + bias_top_row + bias_down_row; ++i)
-	{
-		for (int j = 0; j < width + bias_left_col + bias_right_col; ++j)
-		{
-			fprintf(fout, "%4d", imgLSConstructed[i][j]);
-		}
-		fprintf(fout, "\n");
-	}
-	fclose(fout);
+	print_short_matrix_to_file(imgLSConstructed, "initConstruct.txt", height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);
 	// 打印原图矩阵与初始重建值矩阵进行比较进行调试
-	if((fout = fopen("lena1024.txt", "w")) == NULL)
-	{
-		printf("oppenning error output_text\n");
-		exit(0);
-	}
-	for (int i = 0; i < height; ++i)
-	{
-		for (int j = 0; j < width; ++j)
-		{
-			fprintf(fout, "%4d", img[i][j]);
-		}
-		fprintf(fout, "\n");
-	}
-	fclose(fout);
+	print_short_matrix_to_file(img, "lena_origin.txt", height, width);
 
 
-	//for(int r = 0; r < height + 4; r++)
-	//{
-	//	for(int c = 0; c < width + 4; ++c)
-	//	{
-	//		pixSum += imgLSConstructed[r][c];	
-	//	}
-	//}
-	//pixAverage = (short)(pixSum / (1028 * 1028));
-	//for(int r = 0; r < height + 4; r++)
-	//{
-	//	for(int c = 0; c < width + 4; ++c)
-	//	{
-	//		imgLSConstructed[r][c] -= pixAverage;	
-
-	//	}
-	//}
-
-	//if((fout = fopen("AverageLSConstructed.txt", "w")) == NULL)
-	//{
-	//	printf("oppenning error output_text\n");
-	//	exit(0);
-	//}
-	//for (int i = 0; i < height; ++i)
-	//{
-	//	for (int j = 0; j < width; ++j)
-	//	{
-	//		fprintf(fout, "%4d", imgLSConstructed[i][j]);
-	//	}
-	//	fprintf(fout, "\n");
-	//}
-	//fclose(fout);
+	/********************** 5.  判断图像数据块的方向，进行块合并**************************/
+	// TODO 由wrj来重构
 	image_cut_merge(img, height, width);
+
+	/********************** 6.  建立图像块纹理主方向查找表**************************/
+
+	/********************** 7.  对不同的图像块类型建立马尔可夫预测模型进行预测**************************/
+	short **preLS = new short*[height];		//原始大图的预测值
+	memory_new(preLS, height, width);
+	short **LS_resi = new short*[height];	//存储LS方法预测后得到的整幅图的残差数据
+	memory_new(LS_resi, height, width);
 	switch(paranum)
 	{
 		case 1:
@@ -348,97 +156,34 @@ int main(int argc, char *argv[])
 		default:
 			break;
 	}
-	//printf("%4d\n", LS_resi_energy);
-	//LS_resi_energy = predict_LS(imgLSConstructed[1028][1028],LS_resi[1024][1024],  );
 	printf("预测结束\n");
 
 	// 打印残差矩阵进行调试
-	
-	if((fout = fopen("resi.txt", "w")) == NULL)
-	{
-		printf("oppenning error output_text\n");
-		exit(0);
-	}
-	for (int i = 0; i < height; ++i)
-	{
-		for (int j = 0; j < width; ++j)
-		{
-			fprintf(fout, "%4d", LS_resi[i][j]);
-		}
-		fprintf(fout, "\n");
-	}
-	fclose(fout);
+	print_short_matrix_to_file(LS_resi, "resi.txt", height, width);
 
-	// 完成编码，打开输出码流文件进行回写
-	if((fileout = fopen(argv[2],"wb")) == NULL)
-	{
-		printf("oppenning error fileout\n");
-		exit(0);
-	}
-	fwrite(imgLSConstructed, sizeof(short), (height + bias_top_row + bias_down_row) * (width + bias_left_col + bias_right_col), fileout);
-	fclose(fileout);
+	/********************** 8. 完成编码，打开输出码流文件进行回写**************************/
+	unsigned char **pRes = new unsigned char*[height + bias_top_row + bias_down_row];//存储LS方法预测后得到的整幅图的残差数据
+	memory_new(pRes, height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);
 
-	//// 转换成8bit
-	unsigned char **pRes = new unsigned char*[height + bias_top_row + bias_down_row];
-	for (int i = 0; i < height + bias_top_row + bias_down_row; ++i)
-		pRes[i] = new unsigned char[width + bias_left_col + bias_right_col];
-
+	//转换成8bit
 	for (int r = 0; r < height + bias_top_row + bias_down_row; ++r)
 		for (int c = 0; c < width + bias_left_col + bias_right_col; ++c)
 			pRes[r][c] = static_cast<unsigned char>(imgLSConstructed[r][c]);
-	fileout = fopen("img264Constructed_8bit.raw", "wb");
-	if (fileout == NULL)
-	{
-		printf("openning error fileout\n");
-		exit(0);
-	}
-	for (int r = bias_top_row; r < height + bias_top_row; ++r)
-		fwrite(pRes[r] + bias_left_col, sizeof(unsigned char), width, fileout);
-	fclose(fileout);
-	for (int i = 0; i < height + bias_top_row + bias_down_row; ++i)
-		delete [] pRes[i];
-	delete [] pRes;
-	pRes = NULL;
-	//打印最终的重建图像
-	if((fileout = fopen("out_imgLSConstructed.txt", "w")) == NULL)
-	{
-		printf("oppenning error out_imgLSConstructed\n");
-		exit(0);
-	}
-	for(int r = bias_top_row; r < height + bias_top_row; ++r)
-	{
-		for(int c = bias_left_col; c < width + bias_left_col; ++c)
-			fprintf(fileout, "%4d", imgLSConstructed[r][c]);
-		fprintf(fileout, "\n");
-	}
-	fclose(fileout);
-	
 
+	// 写到命令行输出文件参数中
+	WriteFile(argv[2], pRes, height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);	
+
+	//打印最终的重建图像用于调试
+	print_short_matrix_to_file(imgLSConstructed, "out_imgLSConstructed.txt", height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);
 	printf("预测成功\n");
 
-
+	/********************** 9. 动态分配的内存的释放**************************/
+	memory_free(pRes, height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);
+	memory_free(imgLSConstructed, height, width, bias_top_row, bias_down_row, bias_left_col, bias_right_col);
+	memory_free(LS_resi, height, width);
+	memory_free(preLS, height, width);
+	memory_free(img, height, width);
+	memory_1dimension_free(img_in, height, width);
 	
-
-	// 动态分配的内存的释放
-	for(int i = 0; i < height + bias_top_row + bias_down_row; i++)  
-		free(imgLSConstructed[i]);  
-	free(imgLSConstructed);
-
-	for(int i = 0; i < height; i++)  
-		free(LS_resi[i]);  
-	free(LS_resi);
-
-	for(int i = 0; i < height; i++)  
-		free(preLS[i]);  
-	free(preLS);
-
-	
-	//for(int i = 0; i < height; i++)  
-	//	free(img[i]);  
-	free(img);
-	img = NULL;
-	free(img_in);
-	img_in = NULL;
-
 	return 0;
 }

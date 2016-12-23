@@ -3,6 +3,10 @@
 #define N 4
 
 
+// format transformation for input img file to little endian
+// img:		output
+// img_in:	origin img
+void transformat(short **img, unsigned char *img_in, int height, int width, int endian, int precision);
 
 //typedef unsigned int uint32_t;
 //typedef unsigned char uint8_t;

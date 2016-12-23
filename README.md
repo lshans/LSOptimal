@@ -18,5 +18,5 @@ resources 使用的图片
 ## run
 使用如下命令行参数运行
 ```
-LSOptimal.exe input.raw output.raw width height 0(little endian) 8(precision)
+LSOptimal.exe(默认隐藏的) input.raw output.raw width height 0(little endian) 8(precision)
 ```
