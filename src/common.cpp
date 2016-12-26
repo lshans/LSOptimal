@@ -4,9 +4,13 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <string>
+#include <map>
 
 #include "pre.h"
 #include "common.h"
+#include "canny.h"
+using namespace std;
 // 读入文件错误
 void help()
 {
@@ -44,7 +48,26 @@ void WriteFile(const char* outfile, unsigned char ** pImg, int height, int width
 	fclose(fileout);
 }
 
-
+int ReadFormatedFile(short** direction_block, const char* in_filepath, int rows, int cols)
+{
+	FILE *filein = NULL;
+	if((filein = fopen(in_filepath, "r")) == NULL)
+	{
+		printf("open direction_block file error\n");
+		help();
+		exit(0);
+	}
+	for(int i = 0; i < rows; ++i)
+	{
+		for(int j = 0; j < cols; ++j)
+		{
+			fscanf(filein, "%hd", &direction_block[i][j]);
+		}
+	}
+	fclose(filein);
+	filein = NULL;
+	printf("打开图像块方向信息文件成功\n");
+}
 // print a matrix to a file for debugging
 int print_double_matrix_to_file(double **mat, const char *filename, int rows, int cols, int bias_top_row, int bias_down_row, int bias_left_col, int bias_right_col)
 {
@@ -135,5 +158,14 @@ int memory_1dimension_free(unsigned char *img, int height, int width, int bias_t
 {
 	delete [] img;
 	img = NULL;
+	return 0;
+}
+
+
+int direction_search(int wedge_direction_index, map<int, int> const&direction_table, int mode)
+{
+	map<int, int>::const_iterator iter;
+	iter = direction_table.find(1);
+	mode = iter->second;
 	return 0;
 }

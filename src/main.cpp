@@ -17,11 +17,13 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <string>
+#include <map>
 
 #include "pre.h"
 #include "common.h"
 #include "canny.h"
-
+using namespace std;
 const int mode = 1;			// mode for predcition 0~8 in 4 x 4
 const int paranum = 4;			// num for para 1~4 in 4 x 4
 const double PI = 3.1415;
@@ -51,7 +53,7 @@ void transformat(short **img, unsigned char *img_in,  int height, int width, int
 }
 int main(int argc, char *argv[])
 {
-	// TODO 暂时不用按照C文件方式定义与声明，公共变量放在前面，其他用到的变量再定义并初始化
+	const char* in_filepath = "./resources/wedge_shape_direction.txt";
 	freopen("engery.txt", "w", stdout);
 	
 	int  height;						// 原图高
@@ -127,13 +129,25 @@ int main(int argc, char *argv[])
 	// 打印原图矩阵与初始重建值矩阵进行比较进行调试
 	print_short_matrix_to_file(img, "lena_origin.txt", height, width);
 
-
-	/********************** 5.  判断图像数据块的方向，进行块合并**************************/
+	/***********************5. 读入图像块方向信息文件并判断图像数据块的方向，进行块合并*******/
+	short** direction_block = new short*[ROWS];
+	memory_new(direction_block, ROWS, COLS);
+	ReadFormatedFile(direction_block, in_filepath, ROWS, COLS);
 	// TODO 由wrj来重构
 	image_cut_merge(img, height, width);
 
-	/********************** 6.  建立图像块纹理主方向查找表**************************/
-
+	/********************** 6.  建立图像块纹理主方向查找表**************************///TODO!!!
+	int wedge_direction_index = 3;
+	map<int, int> direction_table;
+	direction_table.insert(pair<int, int>(1, 1));
+	direction_table.insert(pair<int, int>(2, 8));
+	direction_table.insert(pair<int, int>(3, 3));
+	direction_table.insert(pair<int, int>(4, 7));
+	direction_table.insert(pair<int, int>(5, 0));
+	direction_table.insert(pair<int, int>(6, 5));
+	direction_table.insert(pair<int, int>(7, 4));
+	direction_table.insert(pair<int, int>(8, 6));
+	direction_search(wedge_direction_index, direction_table, mode);
 	/********************** 7.  对不同的图像块类型建立马尔可夫预测模型进行预测**************************/
 	short **preLS = new short*[height];		//原始大图的预测值
 	memory_new(preLS, height, width);

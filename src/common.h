@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <map>
+using namespace std;
 typedef unsigned int uint32_t;
 typedef unsigned char uint8_t;
 const int bias_top_row = 3;              //每个块扩展的行数
@@ -60,20 +62,9 @@ int memory_new(unsigned char **img, int height, int width, int bias_top_row = 0,
 int memory_free(unsigned char **img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
 int memory_free(short **img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
 int memory_1dimension_free(unsigned char *img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+int ReadFormatedFile(short** direction_block, const char* in_filepath, int rows, int cols);
+int direction_search(int wedge_direction_index, map<int, int> const &direction_table, int mode);
 
 extern struct block block_label[ROWS][COLS];
 
-//extern short block_image[256][256][8][8];
-//extern short smallimage[256][256][8][8];	    // 全局块
-//extern short dc_left_image[256][256][8][8];
-//extern short dc_top_image[256][256][8][8];
-//extern short dc_image[256][256][8][8];
-//extern short h_image[256][256][8][8];
-//extern short v_image[256][256][8][8];
-//extern short ddl_image[256][256][8][8];
-//extern short ddr_image[256][256][8][8];
-//extern short vr_image[256][256][8][8];
-//extern short hd_image[256][256][8][8];
-//extern short vl_image[256][256][8][8];
-//extern short hu_image[256][256][8][8];
 #endif
