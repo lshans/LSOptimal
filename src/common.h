@@ -2,7 +2,6 @@
 #define COMMON_H
 
 #include <map>
-using namespace std;
 typedef unsigned int uint32_t;
 typedef unsigned char uint8_t;
 const int bias_top_row = 3;              //每个块扩展的行数
@@ -47,23 +46,32 @@ public:
 };
 
 int print_double_matrix_to_file(double **mat, const char *filename, int rows, int cols, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
-int print_short_matrix_to_file(short **mat, const char *filename, int rows, int cols, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+int print_short_matrix(short **mat, const char *filename, int rows, int cols, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
 int print_1dimension_short_matrix_to_file(unsigned char *mat, const char *filename, int rows, int cols, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
-// 读入文件出现错误时提供帮助
-void help();
-//   读文件
-void ReadFile(const char* infile, unsigned char* pImg, int img_size, int precision);
-//   写文件
-void WriteFile(const char* outfile, unsigned char ** pImg, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
- //  动态开辟内存空间
-int memory_new(short **img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
-int memory_new(unsigned char **img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
-//   // 释放动态开辟的内存
-int memory_free(unsigned char **img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
-int memory_free(short **img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
-int memory_1dimension_free(unsigned char *img, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+
+//   读写文件
+void read_img(const char* filename, unsigned char* pImg, int img_sz, int precision);
+void write_img(const char* outfile, unsigned char ** pImg, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+
+// 分配图像存储内存
+short **new_short_mat(int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+unsigned char **new_uchar_mat(int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+
+// 释放图像内存
+void delete_short_mat(short **pImg, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+void delete_uchar_mat(unsigned char **pImg, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+
 int ReadFormatedFile(short** direction_block, const char* in_filepath, int rows, int cols);
-int direction_search(int wedge_direction_index, map<int, int> const &direction_table, int mode);
+int search_direction(std::map<int, int> const&direction_table, int wedge_direction_index);
+
+// 大小端格式转换，将一维指针 img_in指向的内存区域中的数据进行大小端格式转换，并存储到二维指针img指向的内存区域中
+void transformat(short **img, unsigned char *img_in,  int height, int width, int endian, int precision);
+
+// 对图像进行边界扩展
+void img_padding(short **pImgPadding, short **pImg, int height, int width, int bias_top_row = 0, int bias_down_row = 0, int bias_left_col = 0, int bias_right_col = 0);
+
+// 创建查找表
+std::map<int, int> build_direction_search_table();
 
 extern struct block block_label[ROWS][COLS];
 
